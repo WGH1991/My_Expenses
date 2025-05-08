@@ -1,0 +1,397 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MY DAILY EXPENSES</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    #historyContainer::-webkit-scrollbar {
+      width: 8px;
+    }
+    #historyContainer::-webkit-scrollbar-thumb {
+      background-color: rgba(124, 58, 237, 0.5);
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-tr from-purple-100 via-purple-50 to-white flex justify-center items-start min-h-screen p-6">
+  <div class="border-2 border-purple-600 rounded-3xl w-full max-w-4xl min-h-[700px] flex flex-col p-8 bg-white shadow-lg">
+    <header class="flex justify-center mb-8">
+      <h1 class="text-purple-800 text-4xl font-extrabold tracking-wide select-none">MY DAILY EXPENSES</h1>
+    </header>
+
+    <main class="flex-grow flex flex-col justify-center items-center">
+      <button id="dataEntryBtn" aria-label="Open data entry form" class="border-4 border-purple-600 rounded-full w-48 h-48 flex justify-center items-center bg-purple-100 shadow-inner text-purple-600 text-7xl font-semibold hover:bg-purple-200 transition-colors duration-300">
+        <i class="fas fa-wallet"></i>
+      </button>
+    </main>
+
+    <footer class="mt-8 flex justify-center">
+      <button id="historyBtn" aria-label="Open expense history" class="border-4 border-purple-600 rounded-full w-48 py-3 shadow-md bg-purple-50 text-purple-800 text-2xl font-semibold tracking-wide hover:bg-purple-100 transition-colors duration-300">
+        History
+      </button>
+    </footer>
+  </div>
+
+  <!-- Data Entry Modal -->
+  <div id="modalOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden">
+    <div class="bg-white rounded-3xl border-4 border-purple-600 w-full max-w-lg p-8 shadow-lg max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-6">
+        <h2 id="modalTitle" class="text-purple-900 text-3xl font-semibold">Data Entry</h2>
+        <button id="closeModalBtn" class="text-purple-600 hover:text-purple-900 text-3xl font-bold leading-none" aria-label="Close data entry form">&times;</button>
+      </div>
+      <form id="expenseForm" class="flex flex-col gap-5" novalidate>
+        <div>
+          <label for="date" class="block text-purple-800 font-semibold mb-1">Date</label>
+          <input type="date" id="date" name="date" required class="w-full rounded-md border border-purple-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500" />
+        </div>
+        <div>
+          <label for="name" class="block text-purple-800 font-semibold mb-1">Name</label>
+          <select id="name" name="name" required class="w-full rounded-md border border-purple-400 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+            <option value="" disabled selected>Select Name</option>
+            <option value="Walter">Walter</option>
+            <option value="Susi">Susi</option>
+          </select>
+        </div>
+        <div>
+          <label for="amount" class="block text-purple-800 font-semibold mb-1">Amount $</label>
+          <input type="number" id="amount" name="amount" min="0" step="0.01" placeholder="0.00" required class="w-full rounded-md border border-purple-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500" />
+        </div>
+        <div>
+          <label for="details" class="block text-purple-800 font-semibold mb-1">Details</label>
+          <textarea id="details" name="details" rows="3" placeholder="Enter details..." class="w-full rounded-md border border-purple-400 px-3 py-2 resize-y focus:outline-none focus:ring-2 focus:ring-purple-500"></textarea>
+        </div>
+        <div>
+          <label for="status" class="block text-purple-800 font-semibold mb-1">Status</label>
+          <select id="status" name="status" required class="w-full rounded-md border border-purple-400 px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+            <option value="" disabled selected>Select Status</option>
+            <option value="Paid">Paid</option>
+            <option value="Pending">Pending</option>
+            <option value="Entered">Entered</option>
+          </select>
+        </div>
+        <button type="submit" class="mt-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-lg shadow-md transition-colors duration-300 flex justify-center items-center gap-2">
+          <i class="fas fa-plus"></i> Add Expense
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- History Modal -->
+  <div id="historyModalOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden">
+    <div class="bg-white rounded-3xl border-4 border-purple-600 w-full max-w-5xl p-6 shadow-lg max-h-[90vh] overflow-y-auto flex flex-col">
+      <div class="flex justify-between items-center mb-6">
+        <h2 class="text-purple-900 text-3xl font-semibold">Expense History</h2>
+        <button id="closeHistoryModalBtn" class="text-purple-600 hover:text-purple-900 text-3xl font-bold leading-none" aria-label="Close expense history">&times;</button>
+      </div>
+      <div class="flex justify-end mb-4">
+        <button id="downloadPdfBtn" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-5 rounded-lg shadow-md flex items-center gap-2 transition-colors duration-300">
+          <i class="fas fa-file-pdf"></i> Download PDF
+        </button>
+      </div>
+      <div id="historyContainer" class="overflow-y-auto flex-grow max-h-[65vh]">
+        <p class="text-purple-700 text-center mt-20 select-none" id="noRecordsMsg">No expense records yet.</p>
+        <div id="historyList" class="space-y-6"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const dataEntryBtn = document.getElementById('dataEntryBtn');
+      const modalOverlay = document.getElementById('modalOverlay');
+      const closeModalBtn = document.getElementById('closeModalBtn');
+      const expenseForm = document.getElementById('expenseForm');
+
+      const historyBtn = document.getElementById('historyBtn');
+      const historyModalOverlay = document.getElementById('historyModalOverlay');
+      const closeHistoryModalBtn = document.getElementById('closeHistoryModalBtn');
+      const historyList = document.getElementById('historyList');
+      const noRecordsMsg = document.getElementById('noRecordsMsg');
+      const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+
+      // Load saved expenses from localStorage or empty array
+      let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+
+      // Utility: format date to readable string (e.g. "April 15, 2024")
+      function formatDate(dateStr) {
+        const options = { year: 'numeric', month: 'long', day: 'numeric' };
+        const d = new Date(dateStr + 'T00:00:00');
+        return d.toLocaleDateString(undefined, options);
+      }
+
+      // Sort expenses by month, date, and status
+      // Month ascending, date ascending, status order: Paid, Pending, Entered
+      function sortExpenses(arr) {
+        const statusOrder = { 'Paid': 0, 'Pending': 1, 'Entered': 2 };
+        return arr.slice().sort((a, b) => {
+          // Compare year-month first
+          const aMonth = a.date.slice(0, 7);
+          const bMonth = b.date.slice(0, 7);
+          if (aMonth < bMonth) return -1;
+          if (aMonth > bMonth) return 1;
+
+          // Same month, compare date
+          if (a.date < b.date) return -1;
+          if (a.date > b.date) return 1;
+
+          // Same date, compare status by order
+          return statusOrder[a.status] - statusOrder[b.status];
+        });
+      }
+
+      // Group expenses by month-year string (e.g. "April 2024")
+      function groupByMonth(expenses) {
+        const groups = {};
+        expenses.forEach(exp => {
+          const d = new Date(exp.date + 'T00:00:00');
+          const monthYear = d.toLocaleDateString(undefined, { year: 'numeric', month: 'long' });
+          if (!groups[monthYear]) groups[monthYear] = [];
+          groups[monthYear].push(exp);
+        });
+        return groups;
+      }
+
+      // Render the expense history grouped by month
+      function renderHistory() {
+        historyList.innerHTML = '';
+        if (expenses.length === 0) {
+          noRecordsMsg.style.display = 'block';
+          return;
+        } else {
+          noRecordsMsg.style.display = 'none';
+        }
+
+        const sorted = sortExpenses(expenses);
+        const grouped = groupByMonth(sorted);
+
+        for (const [monthYear, items] of Object.entries(grouped)) {
+          const monthSection = document.createElement('section');
+          monthSection.className = 'mb-8';
+
+          const monthTitle = document.createElement('h3');
+          monthTitle.className = 'text-purple-800 text-xl font-semibold mb-3 border-b border-purple-400 pb-1';
+          monthTitle.textContent = monthYear;
+          monthSection.appendChild(monthTitle);
+
+          items.forEach(item => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'bg-white rounded-lg shadow p-4 mb-3 border border-purple-300 flex flex-col md:flex-row md:items-center md:justify-between gap-2';
+
+            // Left side: Date, Name, Amount
+            const leftDiv = document.createElement('div');
+            leftDiv.className = 'flex flex-col md:flex-row md:items-center md:gap-6 text-purple-900 font-medium';
+
+            const dateSpan = document.createElement('span');
+            dateSpan.className = 'min-w-[110px]';
+            dateSpan.textContent = formatDate(item.date);
+            leftDiv.appendChild(dateSpan);
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'min-w-[70px]';
+            nameSpan.textContent = item.name;
+            leftDiv.appendChild(nameSpan);
+
+            const amountSpan = document.createElement('span');
+            amountSpan.className = 'min-w-[80px] text-right md:text-left';
+            amountSpan.textContent = `$${parseFloat(item.amount).toFixed(2)}`;
+            leftDiv.appendChild(amountSpan);
+
+            itemDiv.appendChild(leftDiv);
+
+            // Middle: Details
+            const detailsDiv = document.createElement('div');
+            detailsDiv.className = 'flex-grow text-purple-700 italic text-sm md:text-base';
+            detailsDiv.textContent = item.details || '-';
+            itemDiv.appendChild(detailsDiv);
+
+            // Right side: Status with colored badge
+            const statusSpan = document.createElement('span');
+            statusSpan.className = 'font-semibold px-3 py-1 rounded-full text-sm md:text-base';
+            if (item.status === 'Paid') {
+              statusSpan.classList.add('bg-green-200', 'text-green-800');
+            } else if (item.status === 'Pending') {
+              statusSpan.classList.add('bg-yellow-200', 'text-yellow-800');
+            } else {
+              statusSpan.classList.add('bg-purple-200', 'text-purple-800');
+            }
+            statusSpan.textContent = item.status;
+            itemDiv.appendChild(statusSpan);
+
+            monthSection.appendChild(itemDiv);
+          });
+
+          historyList.appendChild(monthSection);
+        }
+      }
+
+      // Save expenses to localStorage
+      function saveExpenses() {
+        localStorage.setItem('expenses', JSON.stringify(expenses));
+      }
+
+      // Open modal helper
+      function openModal(modal) {
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+      }
+
+      // Close modal helper
+      function closeModal(modal) {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+      }
+
+      // Event: open data entry modal
+      dataEntryBtn.addEventListener('click', () => {
+        openModal(modalOverlay);
+        // Reset form and selects
+        expenseForm.reset();
+        expenseForm.querySelector('#name').selectedIndex = 0;
+        expenseForm.querySelector('#status').selectedIndex = 0;
+        // Set date to today by default
+        const today = new Date().toISOString().slice(0, 10);
+        expenseForm.querySelector('#date').value = today;
+      });
+
+      // Event: close data entry modal
+      closeModalBtn.addEventListener('click', () => {
+        closeModal(modalOverlay);
+      });
+
+      // Close modal on overlay click (only if clicking outside form)
+      modalOverlay.addEventListener('click', e => {
+        if (e.target === modalOverlay) closeModal(modalOverlay);
+      });
+
+      // Event: open history modal
+      historyBtn.addEventListener('click', () => {
+        renderHistory();
+        openModal(historyModalOverlay);
+      });
+
+      // Event: close history modal
+      closeHistoryModalBtn.addEventListener('click', () => {
+        closeModal(historyModalOverlay);
+      });
+
+      // Close history modal on overlay click
+      historyModalOverlay.addEventListener('click', e => {
+        if (e.target === historyModalOverlay) closeModal(historyModalOverlay);
+      });
+
+      // Add new expense from form data
+      expenseForm.addEventListener('submit', e => {
+        e.preventDefault();
+        const formData = new FormData(expenseForm);
+        const newExpense = {
+          date: formData.get('date'),
+          name: formData.get('name'),
+          amount: parseFloat(formData.get('amount')).toFixed(2),
+          details: formData.get('details').trim(),
+          status: formData.get('status'),
+        };
+
+        expenses.push(newExpense);
+        saveExpenses();
+        closeModal(modalOverlay);
+      });
+
+      // PDF generation
+      downloadPdfBtn.addEventListener('click', () => {
+        if (expenses.length === 0) {
+          alert('No expense records to generate PDF.');
+          return;
+        }
+        generatePDF();
+      });
+
+      function generatePDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const margin = 15;
+        const maxLineWidth = pageWidth - margin * 2;
+        const lineHeight = 7;
+        let y = margin;
+
+        // Title
+        doc.setFontSize(18);
+        doc.setTextColor(88, 50, 178);
+        doc.text('Expense Record History', pageWidth / 2, y, { align: 'center' });
+        y += 12;
+
+        // Sort and group expenses
+        const sorted = sortExpenses(expenses);
+        const grouped = groupByMonth(sorted);
+
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+
+        for (const [monthYear, items] of Object.entries(grouped)) {
+          if (y + lineHeight * 2 > doc.internal.pageSize.getHeight() - margin) {
+            doc.addPage();
+            y = margin;
+          }
+          // Month heading
+          doc.setFont(undefined, 'bold');
+          doc.setTextColor(88, 50, 178);
+          doc.text(monthYear, margin, y);
+          y += lineHeight + 2;
+          doc.setFont(undefined, 'normal');
+          doc.setTextColor(0, 0, 0);
+
+          // Table header
+          const headers = ['Date', 'Name', 'Amount $', 'Details', 'Status'];
+          const colWidths = [30, 25, 25, maxLineWidth - 110, 25];
+          let x = margin;
+          doc.setFont(undefined, 'bold');
+          for (let i = 0; i < headers.length; i++) {
+            doc.text(headers[i], x + 1, y);
+            x += colWidths[i];
+          }
+          y += lineHeight;
+
+          doc.setDrawColor(88, 50, 178);
+          doc.line(margin, y - 4, pageWidth - margin, y - 4);
+
+          doc.setFont(undefined, 'normal');
+
+          for (const item of items) {
+            if (y + lineHeight * 2 > doc.internal.pageSize.getHeight() - margin) {
+              doc.addPage();
+              y = margin;
+            }
+            x = margin;
+            // Date
+            doc.text(formatDate(item.date), x + 1, y);
+            x += colWidths[0];
+            // Name
+            doc.text(item.name, x + 1, y);
+            x += colWidths[1];
+            // Amount
+            doc.text(`$${parseFloat(item.amount).toFixed(2)}`, x + 1, y);
+            x += colWidths[2];
+            // Details (wrap text if needed)
+            const detailsLines = doc.splitTextToSize(item.details || '-', colWidths[3] - 2);
+            doc.text(detailsLines, x + 1, y);
+            // Status
+            doc.text(item.status, pageWidth - margin - colWidths[4] + 2, y);
+            y += lineHeight * detailsLines.length;
+          }
+          y += 8;
+        }
+
+        doc.save('expense_record_history.pdf');
+      }
+    })();
+  </script>
+</body>
+</html>
